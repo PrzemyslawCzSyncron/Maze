@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Solution Verifier</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .maze-grid {
+            display: grid;
+            gap: 1px;
+            background-color: #ccc;
+            margin: 20px 0;
+        }
+        .cell {
+            width: 30px;
+            height: 30px;
+            background-color: white;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        .wall {
+            background-color: #333;
+        }
+        .path {
+            background-color: #90EE90;
+        }
+        .start {
+            background-color: #4CAF50;
+        }
+        .finish {
+            background-color: #f44336;
+        }
+        .current {
+            background-color: #FFD700;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            padding: 8px 16px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        #result {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+    </style>
+</head>
+<body>
+    <h1>Maze Solution Verifier</h1>
+    
+    <div class="controls">
+        <h3>Enter your maze (S = Start, F = Finish, X = Wall, O = Path):</h3>
+        <textarea id="mazeInput">XSXXXXXXXXX
+XOOOOOXOOOX
+XXXOXOOOOOX
+XOOOXXOXOXX
+XOXXXOOOOOX
+XOOOOOOXXOX
+XXXXFXXXXXX</textarea>
+        
+        <button onclick="loadCustomMaze()">Load Maze</button>
+
+        <h3>Enter solution (U = Up, D = Down, R = Right, L = Left):</h3>
+        <textarea id="solutionInput">DRRRRRDRRRRDDDLLLLD</textarea>
+        
+        <button onclick="verifySolution()">Verify Solution</button>
+    </div>
+    
+    <div id="maze" class="maze-grid"></div>
+    <div id="result"></div>
+
+    <script>
+        let maze = [];
+        let currentPos = null;
+        let finishPos = null;
+
+        function loadCustomMaze() {
+            const mazeText = document.getElementById('mazeInput').value.trim();
+            const mazeLines = mazeText.split('\n');
+            
+            maze = mazeLines.map(line => line.split(''));
+            
+            // Find start and finish positions
+            for (let i = 0; i < maze.length; i++) {
+                for (let j = 0; j < maze[i].length; j++) {
+                    if (maze[i][j] === 'S') {
+                        currentPos = [i, j];
+                    } else if (maze[i][j] === 'F') {
+                        finishPos = [i, j];
+                    }
+                }
+            }
+            
+            renderMaze();
+            document.getElementById('result').textContent = '';
+            document.getElementById('result').className = '';
+        }
+
+        function renderMaze() {
+            const mazeElement = document.getElementById('maze');
+            mazeElement.style.gridTemplateColumns = `repeat(${maze[0].length}, 30px)`;
+            mazeElement.innerHTML = '';
+
+            for (let i = 0; i < maze.length; i++) {
+                for (let j = 0; j < maze[i].length; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    
+                    switch (maze[i][j]) {
+                        case 'X':
+                            cell.classList.add('wall');
+                            cell.textContent = 'X';
+                            break;
+                        case 'S':
+                            cell.classList.add('start');
+                            cell.textContent = 'S';
+                            break;
+                        case 'F':
+                            cell.classList.add('finish');
+                            cell.textContent = 'F';
+                            break;
+                        case 'O':
+                            cell.textContent = 'O';
+                            break;
+                        case '*':
+                            cell.classList.add('path');
+                            cell.textContent = '*';
+                            break;
+                        case 'C':
+                            cell.classList.add('current');
+                            cell.textContent = '●';
+                            break;
+                    }
+                    
+                    mazeElement.appendChild(cell);
+                }
+            }
+        }
+
+        function verifySolution() {
+            loadCustomMaze(); // Reset maze state
+            const solution = document.getElementById('solutionInput').value.trim().toUpperCase();
+            const result = document.getElementById('result');
+            
+            if (!currentPos || !finishPos) {
+                result.textContent = "Invalid maze: Missing start (S) or finish (F) position!";
+                result.className = 'error';
+                return;
+            }
+
+            let [row, col] = currentPos;
+            let validSolution = true;
+            let path = [];
+
+            // Create a deep copy of the maze for animation
+            let mazeCopy = maze.map(row => [...row]);
+            
+            for (let move of solution) {
+                let newRow = row;
+                let newCol = col;
+                
+                switch (move) {
+                    case 'U': newRow--; break;
+                    case 'D': newRow++; break;
+                    case 'L': newCol--; break;
+                    case 'R': newCol++; break;
+                    default:
+                        result.textContent = `Invalid move: ${move}. Use only U, D, L, R`;
+                        result.className = 'error';
+                        return;
+                }
+                
+                // Check if move is valid
+                if (newRow < 0 || newRow >= maze.length || 
+                    newCol < 0 || newCol >= maze[0].length || 
+                    maze[newRow][newCol] === 'X') {
+                    validSolution = false;
+                    break;
+                }
+                
+                row = newRow;
+                col = newCol;
+                path.push([row, col]);
+                
+                if (maze[row][col] === 'O') {
+                    maze[row][col] = '*';
+                }
+            }
+            
+            // Mark current position
+            maze[row][col] = 'C';
+            renderMaze();
+            
+            if (!validSolution) {
+                result.textContent = "Invalid solution: Hit a wall or went out of bounds!";
+                result.className = 'error';
+            } else if (row !== finishPos[0] || col !== finishPos[1]) {
+                result.textContent = "Invalid solution: Did not reach the finish point!";
+                result.className = 'error';
+            } else {
+                result.textContent = "Valid solution! Successfully reached the finish point!";
+                result.className = 'success';
+            }
+        }
+
+        // Load the maze when the page loads
+        window.onload = loadCustomMaze;
+    </script>
+</body>
+</html>
